@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 SEC = os.getenv('CLIENT_SEC')
-CLIENT = os.getenv('CLIENT_SEC')
+CLIENT = os.getenv('CLIENT')
 USER_AGENT = os.getenv('USER_AGENT')
 username = os.getenv('username')
 pw = os.getenv('pw')
@@ -30,24 +30,18 @@ def extract_symbols(text):
     return orgs
 
 def fetch_posts(subname):
-
-    for submission in reddit.subreddit(subname).new(limit=10):
-        infos = {}
-        stock = extract_symbols(submission.selftext)
-
-        if len(stock) == 0:
-            stock = extract_symbols(submission.title)
     
+    posts = []
+    for submission in reddit.subreddit(subname).new(limit=20):
+        infos = {}
+        infos['entity_body'] = extract_symbols(submission.selftext)
+        infos['entity_title'] = extract_symbols(submission.title)
         infos['id'] = submission.id
         infos['title'] = submission.title
         infos['date_time'] = submission.created_utc
         infos['upvotes'] = submission.score
-
-        print(stock)
         print(infos)
-        
         c = submission.comments.list()
-        print(len(c))
-        # print([i.body for i in c])
-
-fetch_posts('wallstreetbets')
+        infos['comments'] = len(c)
+        posts.append(infos)
+    return posts
