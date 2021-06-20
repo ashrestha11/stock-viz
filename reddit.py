@@ -1,8 +1,11 @@
 import os
 import praw
-import datetime 
-import spacy
 from dotenv import load_dotenv
+import pandas as pd
+from datetime import datetime
+import pytz
+from utils import extract_symbols
+import sqlite3
 
 load_dotenv()
 
@@ -18,30 +21,37 @@ reddit = praw.Reddit(client_id=CLIENT,
                     username=username,
                     password=pw)
 
-def extract_symbols(text):
-    nlp = spacy.load('en_core_web_sm')
-    doc = nlp(text)
-
-    orgs = []
-    for entity in doc.ents:
-        if entity.label_ == 'ORG':
-            orgs.append(entity.text)
-    
-    return orgs
 
 def fetch_posts(subname):
-    
-    posts = []
-    for submission in reddit.subreddit(subname).new(limit=20):
+
+    tz = pytz.timezone('America/Los_Angeles')
+
+    connection = sqlite3.connect('database/memes.db')
+    cursor = connection.cursor()
+
+    for submission in reddit.subreddit(subname).stream.submissions():
         infos = {}
-        infos['entity_body'] = extract_symbols(submission.selftext)
-        infos['entity_title'] = extract_symbols(submission.title)
         infos['id'] = submission.id
         infos['title'] = submission.title
-        infos['date_time'] = submission.created_utc
+        infos['timestamp'] = datetime.fromtimestamp(submission.created_utc, tz)
         infos['upvotes'] = submission.score
-        print(infos)
         c = submission.comments.list()
         infos['comments'] = len(c)
-        posts.append(infos)
-    return posts
+
+        symbols = extract_symbols(submission.title)
+
+        if len(symbols) == 1:
+
+            infos['symbol'] = symbols[0]
+            cursor.execute("""INSERT INTO reddit(id, symbol, title, timestamp, upvotes, comments) VALUES (:id, :symbol, :title, :timestamp, :upvotes, :comments);""", infos)
+        elif len(symbols) > 1:
+            for symbol in symbols:
+                infos['symbol'] = symbol
+                cursor.execute("""INSERT INTO reddit(id, symbol, title, timestamp, upvotes, comments) VALUES (:id, :symbol, :title, :timestamp, :upvotes, :comments);""", infos)
+        else:
+            print('No symbol found')
+
+        connection.commit()
+
+if __name__ == '__main__':
+    fetch_posts('wallstreetbets')
