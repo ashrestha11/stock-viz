@@ -1,5 +1,8 @@
 # stock-viz
 
+### Architecture
+
+
 ### data collection:
 
 1. collect the raw data from social media (posts, date, title, comments, upvote)

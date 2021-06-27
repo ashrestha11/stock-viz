@@ -1,4 +1,5 @@
 import re
+from nltk.corpus import stopwords
 
 
 def remove_emoji(string):
@@ -17,9 +18,11 @@ def rm_characters(string):
 
 
 def extract_symbols(text):
-    exlcude = ['THE', 'FLY', 'API', 'FREE', 'NEW','DD', 'BUY', 'PUT',
-     'YOLO', 'WSB', 'BETS', 'PAID', 'LOSS', 'GAIN', 'PORN', 'HEAR', 'OUT', 'MOON'] # whitelist
-    # + stop words
+    stop_words = stopwords.words('english')
+    exclude = ['THE', 'FLY', 'API', 'FREE', 'NEW','DD', 'BUY', 'PUT',
+     'YOLO', 'WSB', 'WTF', 'BETS', 'PAID', 'LOSS', 'GAIN', 'PORN', 'HEAR', 'OUT', 'MOON'] # whitelist
+
+    whitelist = exclude + stop_words
     
     pre_symbols = [rm_characters(i) for i in remove_emoji(text).split() 
                             if '$' in i 
@@ -28,7 +31,7 @@ def extract_symbols(text):
                             and i == i.upper()]
 
     symbols = [i.upper() for i in pre_symbols if any(e.isdigit() for e in i) == False
-                            and any(n in i for n in exlcude) == False
+                            and any(n in i for n in whitelist) == False
                             and len(i) >= 2]
    
     return list(set(symbols)) # removes duplicates
