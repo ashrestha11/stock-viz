@@ -4,11 +4,15 @@ from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime
 import pytz
-from utils import extract_symbols
-import sqlite3
+from extractor import extract_symbols
 import nltk
 nltk.download('vader_lexicon')
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from praw.models import MoreComments
+import gspread
+import time
+from gspread.exceptions import APIError
+import argparse
 
 load_dotenv()
 
@@ -26,49 +30,79 @@ reddit = praw.Reddit(client_id=CLIENT,
 sid = SentimentIntensityAnalyzer()
 tz = pytz.timezone('America/Los_Angeles')
 
+def fetch_posts(subname:str):
 
-def fetch_posts(subname):
-
-    connection = sqlite3.connect('database/memes.db')
-    cursor = connection.cursor()
-
-    # can build a queue system 
     for submission in reddit.subreddit(subname).stream.submissions():
-        infos = {}
-        infos['id'] = submission.id
-        infos['title'] = submission.title
-        infos['timestamp'] = datetime.fromtimestamp(submission.created_utc, tz)
-        infos['upvotes'] = submission.upvote_ratio
-        comments = submission.comments.list()
-        infos['comments'] = len(comments)
+        try:
+            infos = {}
+            infos['id'] = submission.id
+            infos['title'] = submission.title
+            infos['timestamp'] = datetime.fromtimestamp(submission.created_utc, tz).isoformat()
+            infos['upvotes'] = submission.upvote_ratio
+            comments = submission.comments.list()
+            infos['comments'] = len(comments)
+            infos['subreddit'] = submission.subreddit.display_name
 
-        # sentiment scores
-        scores = []
-        for comment in comments:
-            sentiment = sid.polarity_scores(comment.body)
-            scores.append(sentiment['compound'])
+            # sentiment scores
+            scores = []
+            for comment in comments:
+                if isinstance(comment, MoreComments):
+                    continue
+                comment_sentiment = sid.polarity_scores(comment.body)
+                scores.append(comment_sentiment['compound'])
 
-        # avg for the post
-        avg_sentiment = sum(scores) / len(comments)
+            # # avg for the post
+            if len(comments) > 0:
+                avg_sentiment = sum(scores) / len(comments)
+            else:
+                avg_sentiment = sid.polarity_scores(submission.selftext)['compound']
+            infos['polarity'] = avg_sentiment
+            # joining symbols from title & body
+            infos['symbols'] = extract_symbols(submission.title) + extract_symbols(submission.selftext)
 
-        infos['polarity'] = avg_sentiment
-        symbols = extract_symbols(submission.title)
+            yield infos
 
-        if len(symbols) == 1:
+        except Exception as e:
+            print(e)
+            time.sleep(2)
+            continue
 
-            infos['symbol'] = symbols[0]
-            cursor.execute("""INSERT INTO reddit2(id, symbol, title, timestamp, upvotes, comments, polarity) 
-                VALUES (:id, :symbol, :title, :timestamp, :upvotes, :comments, :polarity);""", infos)
-        elif len(symbols) > 1:
-            for symbol in symbols:
-                infos['symbol'] = symbol
-                cursor.execute("""INSERT INTO reddit2(id, symbol, title, timestamp, upvotes, comments, polarity)
-                 VALUES (:id, :symbol, :title, :timestamp, :upvotes, :comments, :polarity);""", infos)
-        else:
-            print('No symbol found')
+def insert_gsheet(config_path,sheetname, subreddits):
 
-        connection.commit()
+    gc = gspread.service_account(filename=config_path)
+    sh = gc.open(sheetname)
+    worksheet = sh.sheet1
+
+    i = 0
+    for post in fetch_posts(subname=subreddits):
+
+        len_symbols = len(post['symbols'])
+        if len_symbols == 1:
+            post['symbols'] = post['symbols'][0]
+        elif len_symbols > 1:
+            post['symbols'] = str(post['symbols'])
+     
+        values = [v for v in post.values() if len(post['symbols']) != 0] # skip if empty
+        print(values)
+
+        try:
+            worksheet.append_row(values)  # need to batch load
+        except APIError as e:
+            print(e)
+            continue
+
+        time.sleep(4)
 
 if __name__ == '__main__':
-    fetch_posts('wallstreetbets')
-    # need to catch errors
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-g","--gsconfig", type=str,
+                        help="config path for gsheeta api")
+    parser.add_argument("-n", "--sheetname", type=str,
+                        help='gsheet filename')
+    parser.add_argument("-s", "--subreddits", type=str,
+                        help="""subreddits (ex. 'python+all')""")
+    
+    args = parser.parse_args()
+    insert_gsheet(config_path=args.gsconfig, sheetname=args.sheetname,
+                  subreddits=args.subreddits)

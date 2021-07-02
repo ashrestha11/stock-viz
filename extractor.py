@@ -1,5 +1,6 @@
 import re
-from nltk.corpus import stopwords
+from nltk.util import pr
+from utils.whitelist import rm_words
 
 
 def remove_emoji(string):
@@ -18,11 +19,6 @@ def rm_characters(string):
 
 
 def extract_symbols(text):
-    stop_words = stopwords.words('english')
-    exclude = ['THE', 'FLY', 'API', 'FREE', 'NEW','DD', 'BUY', 'PUT',
-     'YOLO', 'WSB', 'WTF', 'BETS', 'PAID', 'LOSS', 'GAIN', 'PORN', 'HEAR', 'OUT', 'MOON'] # whitelist
-
-    whitelist = exclude + stop_words
     
     pre_symbols = [rm_characters(i) for i in remove_emoji(text).split() 
                             if '$' in i 
@@ -30,24 +26,13 @@ def extract_symbols(text):
                             or len(i) == 4) 
                             and i == i.upper()]
 
-    symbols = [i.upper() for i in pre_symbols if any(e.isdigit() for e in i) == False
-                            and any(n in i for n in whitelist) == False
-                            and len(i) >= 2]
+    symbols = [i.upper() for i in pre_symbols if any(e.isdigit() for e in i) == False]
+
+    # check the whitelist
+    for idx, symbol in enumerate(symbols):
+        if symbol in rm_words():
+            print("removed symbol: {}".format(symbols[idx]))
+            symbols.pop(idx)
+            continue
    
     return list(set(symbols)) # removes duplicates
-
-# import sqlite3
-# import pandas as pd
-
-# DB_URI = 'database/memes.db'
-
-# conn = sqlite3.connect(DB_URI)
-# conn.row_factory = sqlite3.Row
-# cur = conn.cursor()
-# cur.execute('select * from reddit;')
-# r = [dict(row) for row in cur.fetchall()]
-# df = pd.DataFrame(r)
-# df['timestamp']= pd.to_datetime(df['timestamp'])
-# df.set_index('timestamp', inplace=True)
-# c = df.groupby(by=[df.symbol]).resample('1H')['symbol'].count()
-# print(c)
