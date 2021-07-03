@@ -4,6 +4,9 @@ from utils.whitelist import rm_words
 
 
 def remove_emoji(string):
+    """
+    Removes emoji from the string
+    """
     emoji_pattern = re.compile("["
                            u"\U0001F600-\U0001F64F"  # emoticons
                            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
@@ -18,7 +21,13 @@ def rm_characters(string):
     return re.sub('[^A-Za-z0-9]+', '', string)
 
 
-def extract_symbols(text):
+def extract_symbols(text: str):
+    """
+    Finds words that start with $, capitalized &
+    length of 3 or 4 (tickers)
+
+    Filters out words that are not tickers
+    """
     
     pre_symbols = [rm_characters(i) for i in remove_emoji(text).split() 
                             if '$' in i 
@@ -36,3 +45,6 @@ def extract_symbols(text):
             continue
    
     return list(set(symbols)) # removes duplicates
+
+def _handle_delays():
+    pass

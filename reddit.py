@@ -33,39 +33,37 @@ tz = pytz.timezone('America/Los_Angeles')
 def fetch_posts(subname:str):
 
     for submission in reddit.subreddit(subname).stream.submissions():
-        try:
-            infos = {}
-            infos['id'] = submission.id
-            infos['title'] = submission.title
-            infos['timestamp'] = datetime.fromtimestamp(submission.created_utc, tz).isoformat()
-            infos['upvotes'] = submission.upvote_ratio
-            comments = submission.comments.list()
-            infos['comments'] = len(comments)
-            infos['subreddit'] = submission.subreddit.display_name
+        infos = {}
+        infos['id'] = submission.id
+        infos['title'] = submission.title
+        infos['timestamp'] = datetime.fromtimestamp(submission.created_utc, tz).isoformat()
+        infos['upvotes'] = submission.upvote_ratio
+        comments = submission.comments.list()
+        infos['comments'] = len(comments)
+        infos['subreddit'] = submission.subreddit.display_name
 
-            # sentiment scores
-            scores = []
-            for comment in comments:
-                if isinstance(comment, MoreComments):
-                    continue
-                comment_sentiment = sid.polarity_scores(comment.body)
-                scores.append(comment_sentiment['compound'])
+        # sentiment scores
+        scores = []
+        for comment in comments:
+            if isinstance(comment, MoreComments):
+                continue
+            comment_sentiment = sid.polarity_scores(comment.body)
+            scores.append(comment_sentiment['compound'])
 
-            # # avg for the post
-            if len(comments) > 0:
-                avg_sentiment = sum(scores) / len(comments)
-            else:
-                avg_sentiment = sid.polarity_scores(submission.selftext)['compound']
-            infos['polarity'] = avg_sentiment
-            # joining symbols from title & body
-            infos['symbols'] = extract_symbols(submission.title) + extract_symbols(submission.selftext)
+        # # avg for the post
+        if len(comments) > 0:
+            avg_sentiment = sum(scores) / len(comments)
+        else:
+            avg_sentiment = sid.polarity_scores(submission.selftext)['compound']
+        infos['polarity'] = avg_sentiment
+        # joining symbols from title & body
+        infos['symbols'] = extract_symbols(submission.title) + extract_symbols(submission.selftext)
 
-            yield infos
+        yield infos
 
-        except Exception as e:
-            print(e)
-            time.sleep(2)
-            continue
+# TO DO:
+#   connection error when it just waits for new posts
+#   avoid the api limit
 
 def insert_gsheet(config_path,sheetname, subreddits):
 
@@ -73,7 +71,6 @@ def insert_gsheet(config_path,sheetname, subreddits):
     sh = gc.open(sheetname)
     worksheet = sh.sheet1
 
-    i = 0
     for post in fetch_posts(subname=subreddits):
 
         len_symbols = len(post['symbols'])
@@ -104,5 +101,7 @@ if __name__ == '__main__':
                         help="""subreddits (ex. 'python+all')""")
     
     args = parser.parse_args()
-    insert_gsheet(config_path=args.gsconfig, sheetname=args.sheetname,
+
+    while True:
+        insert_gsheet(config_path=args.gsconfig, sheetname=args.sheetname,
                   subreddits=args.subreddits)
