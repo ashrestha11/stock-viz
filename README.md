@@ -2,6 +2,8 @@
 
 ### Architecture
 
+![arch](./img/arch.png)
+
 
 ### data collection:
 
