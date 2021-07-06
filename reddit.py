@@ -62,33 +62,47 @@ def fetch_posts(subname:str):
         yield infos
 
 # TO DO:
-#   connection error when it just waits for new posts
-#   avoid the api limit
+#   async requests
+# loggers 
 
-def insert_gsheet(config_path,sheetname, subreddits):
-
+def gsheet_auth(config_path: str, sheetname: str):
     gc = gspread.service_account(filename=config_path)
+   
     sh = gc.open(sheetname)
     worksheet = sh.sheet1
 
-    for post in fetch_posts(subname=subreddits):
+    return worksheet
 
-        len_symbols = len(post['symbols'])
-        if len_symbols == 1:
-            post['symbols'] = post['symbols'][0]
-        elif len_symbols > 1:
-            post['symbols'] = str(post['symbols'])
-     
-        values = [v for v in post.values() if len(post['symbols']) != 0] # skip if empty
-        print(values)
+def insert_gsheet(config_path,sheetname, subreddits):
 
-        try:
-            worksheet.append_row(values)  # need to batch load
-        except APIError as e:
-            print(e)
-            continue
+    # auth
+    ws = gsheet_auth(config_path, sheetname)
+    gettime = time.time()
 
-        time.sleep(4)
+    while True:
+        for post in fetch_posts(subname=subreddits):
+
+            len_symbols = len(post['symbols'])
+            if len_symbols == 1:
+                post['symbols'] = post['symbols'][0]
+            elif len_symbols > 1:
+                post['symbols'] = str(post['symbols'])
+        
+            values = [v for v in post.values() if len(post['symbols']) != 0] # skip if empty
+            print(values)
+
+            try:
+                ws.append_row(values)  # need to batch load
+            except APIError as e:
+                print(e)
+                time.sleep(60) # if it researches limit
+
+            time.sleep(3)
+
+            if(time.time() - gettime > 60* 59):
+                ws = gsheet_auth(config_path,sheetname)
+                gettime = time.time()
+
 
 if __name__ == '__main__':
 
@@ -102,6 +116,5 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
-    while True:
-        insert_gsheet(config_path=args.gsconfig, sheetname=args.sheetname,
+    insert_gsheet(config_path=args.gsconfig, sheetname=args.sheetname,
                   subreddits=args.subreddits)
