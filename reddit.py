@@ -13,7 +13,9 @@ import gspread
 import time
 from gspread.exceptions import APIError
 import argparse
+import logging as logger
 
+logger.basicConfig(format='%(levelname)s:%(message)s', level=logger.DEBUG)
 load_dotenv()
 
 SEC = os.getenv('CLIENT_SEC')
@@ -89,17 +91,21 @@ def insert_gsheet(config_path,sheetname, subreddits):
                 post['symbols'] = str(post['symbols'])
         
             values = [v for v in post.values() if len(post['symbols']) != 0] # skip if empty
-            print(values)
+            logger.info(values)
 
             try:
                 ws.append_row(values)  # need to batch load
             except APIError as e:
-                print(e)
+                logger.debug(e)
                 time.sleep(60) # if it researches limit
+
+                ws.append_row(values)
+                continue
 
             time.sleep(3)
 
             if(time.time() - gettime > 60* 59):
+                logger.info("Re-Auth at {}".format(time.time()))
                 ws = gsheet_auth(config_path,sheetname)
                 gettime = time.time()
 
