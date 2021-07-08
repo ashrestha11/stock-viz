@@ -1,8 +1,8 @@
 import os
 import praw
 from dotenv import load_dotenv
-import pandas as pd
 from datetime import datetime
+from prawcore.exceptions import PrawcoreException
 import pytz
 from extractor import extract_symbols
 import nltk
@@ -14,6 +14,7 @@ import time
 from gspread.exceptions import APIError
 import argparse
 import logging as logger
+from google.oauth2 import service_account
 
 logger.basicConfig(format='%(levelname)s:%(message)s', level=logger.DEBUG)
 load_dotenv()
@@ -35,45 +36,54 @@ tz = pytz.timezone('America/Los_Angeles')
 def fetch_posts(subname:str):
 
     for submission in reddit.subreddit(subname).stream.submissions():
-        infos = {}
-        infos['id'] = submission.id
-        infos['title'] = submission.title
-        infos['timestamp'] = datetime.fromtimestamp(submission.created_utc, tz).isoformat()
-        infos['upvotes'] = submission.upvote_ratio
-        comments = submission.comments.list()
-        infos['comments'] = len(comments)
-        infos['subreddit'] = submission.subreddit.display_name
+        try:
+            infos = {}
+            infos['id'] = submission.id
+            infos['title'] = submission.title
+            infos['timestamp'] = datetime.fromtimestamp(submission.created_utc, tz).isoformat()
+            infos['upvotes'] = submission.upvote_ratio
+            comments = submission.comments.list()
+            infos['comments'] = len(comments)
+            infos['subreddit'] = submission.subreddit.display_name
 
-        # sentiment scores
-        scores = []
-        for comment in comments:
-            if isinstance(comment, MoreComments):
-                continue
-            comment_sentiment = sid.polarity_scores(comment.body)
-            scores.append(comment_sentiment['compound'])
+            # sentiment scores
+            scores = []
+            for comment in comments:
+                if isinstance(comment, MoreComments):
+                    continue
+                comment_sentiment = sid.polarity_scores(comment.body)
+                scores.append(comment_sentiment['compound'])
 
-        # # avg for the post
-        if len(comments) > 0:
-            avg_sentiment = sum(scores) / len(comments)
-        else:
-            avg_sentiment = sid.polarity_scores(submission.selftext)['compound']
-        infos['polarity'] = avg_sentiment
-        # joining symbols from title & body
-        infos['symbols'] = extract_symbols(submission.title) + extract_symbols(submission.selftext)
+            # # avg for the post
+            if len(comments) > 0:
+                avg_sentiment = sum(scores) / len(comments)
+            else:
+                avg_sentiment = sid.polarity_scores(submission.selftext)['compound']
+            infos['polarity'] = avg_sentiment
+            # joining symbols from title & body
+            infos['symbols'] = extract_symbols(submission.title) + extract_symbols(submission.selftext)
 
-        yield infos
+            yield infos
+        except PrawcoreException as e:
+            print(e)
 
 # TO DO:
 #   async requests
 # loggers 
 
 def gsheet_auth(config_path: str, sheetname: str):
-    gc = gspread.service_account(filename=config_path)
-   
-    sh = gc.open(sheetname)
-    worksheet = sh.sheet1
+  
+    scope = ['https://spreadsheets.google.com/feeds',
+    'https://www.googleapis.com/auth/drive']
+    creds = service_account.Credentials.from_service_account_file(config_path)
 
-    return worksheet
+    scoped_credentials = creds.with_scopes(scope)
+    client = gspread.authorize(scoped_credentials)
+
+    sh = client.open(sheetname)
+    ws = sh.sheet1
+
+    return ws
 
 def insert_gsheet(config_path,sheetname, subreddits):
 
@@ -94,19 +104,25 @@ def insert_gsheet(config_path,sheetname, subreddits):
             logger.info(values)
 
             try:
-                ws.append_row(values)  # need to batch load
+                ws.append_row(values)
+            
             except APIError as e:
+                mgs = dict(str(e))
+                if mgs['code'] == 429:
+                    time.sleep(60)
+                continue
+            except Exception as e:
                 logger.debug(e)
-                time.sleep(60) # if it researches limit
+                time.sleep(.01) 
 
+                ws = gsheet_auth(config_path, sheetname)
                 ws.append_row(values)
                 continue
 
-            time.sleep(3)
-
             if(time.time() - gettime > 60* 59):
                 logger.info("Re-Auth at {}".format(time.time()))
-                ws = gsheet_auth(config_path,sheetname)
+
+                ws = gsheet_auth(config_path, sheetname)
                 gettime = time.time()
 
 
