@@ -2,6 +2,7 @@ import os
 import praw
 from dotenv import load_dotenv
 from datetime import datetime
+from datetime import timedelta
 from prawcore.exceptions import PrawcoreException
 import pytz
 from extractor import extract_symbols
@@ -65,11 +66,7 @@ def fetch_posts(subname:str):
 
             yield infos
         except PrawcoreException as e:
-            print(e)
-
-# TO DO:
-#   async requests
-# loggers 
+            logger.log(e)
 
 def gsheet_auth(config_path: str, sheetname: str):
   
@@ -89,10 +86,19 @@ def insert_gsheet(config_path,sheetname, subreddits):
 
     # auth
     ws = gsheet_auth(config_path, sheetname)
-    gettime = time.time()
+    gettime = datetime.now(tz=tz)
 
     while True:
         for post in fetch_posts(subname=subreddits):
+
+            # check the timedelta right away
+            if datetime.now(tz=tz) > gettime + timedelta(minutes=20):
+                logger.info("Reconnected at {}".format(datetime.now()))
+
+                ws = gsheet_auth(config_path, sheetname)
+                gettime = datetime.now(tz=tz)
+            else:
+                logger.info(f"No Need for restart [{datetime.now(tz=tz)}]")
 
             len_symbols = len(post['symbols'])
             if len_symbols == 1:
@@ -107,9 +113,9 @@ def insert_gsheet(config_path,sheetname, subreddits):
                 ws.append_row(values)
             
             except APIError as e:
-                mgs = dict(str(e))
-                if mgs['code'] == 429:
-                    time.sleep(60)
+                time.sleep(101)
+
+                ws.append_row(values)
                 continue
             except Exception as e:
                 logger.debug(e)
@@ -118,12 +124,6 @@ def insert_gsheet(config_path,sheetname, subreddits):
                 ws = gsheet_auth(config_path, sheetname)
                 ws.append_row(values)
                 continue
-
-            if(time.time() - gettime > 60* 59):
-                logger.info("Re-Auth at {}".format(time.time()))
-
-                ws = gsheet_auth(config_path, sheetname)
-                gettime = time.time()
 
 
 if __name__ == '__main__':
