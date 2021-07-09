@@ -48,3 +48,28 @@ def extract_symbols(text: str):
 
 def _handle_delays():
     pass
+
+
+def parse_symbols(line: dict):
+    """
+    Need list of each row in list
+    """
+
+    symbols = line['symbols']
+
+    if len(symbols) > 1:
+        tmp_dict = line
+        rows = []
+        for symbol in symbols:
+            tmp_dict['symbol'] = symbol
+            row = [r for r in tmp_dict]
+            rows.append(row)
+        
+        return rows 
+    elif len(symbols) == 1:
+        line["symbols"] = line["symbols"][0]
+
+        return [l for l in line]
+    else:
+        return
+
