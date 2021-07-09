@@ -1,5 +1,7 @@
 # stock-viz
 
+This data collection is to test the limits of Google Sheets as a main source of database. The scripts runs 24/7 and collects all the symbols mentioned in subreddit posts.
+
 ### Architecture
 
 ![arch](./img/arch.png)
@@ -9,11 +11,13 @@
 
 1. collect the raw data from social media (posts, date, title, comments, upvote)
 2. clean the title and extract symbols on certain conditions 
-3. get the sentiment score  
+3. get the sentiment score
 
-### creating metrics
-- count by range (hourly, daily, weekly and monthly) of top 10 or 20
-- % change in 
+## Deployment
+1. Google cloud functions (to-do)
 
+### Data Cleaning
+1. Raw collection -> Timestamp, symbols, count
 
-This version of the Google Sheets API has a limit of 500 requests per 100 seconds per project, and 100 requests per 100 seconds per user. Limits for reads and writes are tracked separately.
+### Dashboard 
+1. Data Studio
