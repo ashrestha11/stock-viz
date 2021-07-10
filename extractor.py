@@ -1,7 +1,9 @@
+"""
+Clean texts, extracts symbols and
+checks for non-symbols to remove
+"""
 import re
-from nltk.util import pr
-from utils.whitelist import rm_words
-
+from utils.whitelist import remove_whitelist
 
 def remove_emoji(string):
     """
@@ -18,8 +20,10 @@ def remove_emoji(string):
     return emoji_pattern.sub(r'', string)
 
 def rm_characters(string):
+    """
+    remove special characters
+    """
     return re.sub('[^A-Za-z0-9]+', '', string)
-
 
 def extract_symbols(text: str):
     """
@@ -28,48 +32,15 @@ def extract_symbols(text: str):
 
     Filters out words that are not tickers
     """
-    
-    pre_symbols = [rm_characters(i) for i in remove_emoji(text).split() 
-                            if '$' in i 
-                            or (len(i) == 3 
-                            or len(i) == 4) 
-                            and i == i.upper()]
-
-    symbols = [i.upper() for i in pre_symbols if any(e.isdigit() for e in i) == False]
+    pre_symbols = [rm_characters(i)
+                    for i in remove_emoji(text).split()
+                        if '$' in i
+                        or (len(i) == 3
+                        or len(i) == 4)
+                        and i == i.upper()]
+    symbols = [i.upper() for i in pre_symbols
+                if any(e.isdigit() for e in i) is False]
 
     # check the whitelist
-    for idx, symbol in enumerate(symbols):
-        if symbol in rm_words():
-            print("removed symbol: {}".format(symbols[idx]))
-            symbols.pop(idx)
-            continue
-   
+    symbols = remove_whitelist(symbols)
     return list(set(symbols)) # removes duplicates
-
-def _handle_delays():
-    pass
-
-
-def parse_symbols(line: dict):
-    """
-    Need list of each row in list
-    """
-
-    symbols = line['symbols']
-
-    if len(symbols) > 1:
-        tmp_dict = line
-        rows = []
-        for symbol in symbols:
-            tmp_dict['symbol'] = symbol
-            row = [r for r in tmp_dict]
-            rows.append(row)
-        
-        return rows 
-    elif len(symbols) == 1:
-        line["symbols"] = line["symbols"][0]
-
-        return [l for l in line]
-    else:
-        return
-
