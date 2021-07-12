@@ -14,8 +14,8 @@ def rm_words():
         'LETS', 'BOOM', 'SOME', 'LUCK', 'AND', 'FAQ', 'THIS', 'THAT', 'CEO', 'PART',
         'IM', 'PL', 'PUTS', 'PUT','CALL', 'DIP', 'LOVE','BET','TOP', 'FUN',
          'DEAL', 'FULL', 'YEAR', 'LAST','HUGE', 'FOOD', 'PE', 'FOMO', 'USD', 'HIGH',
-         'TA', 'LIFE', 'NOT', 'II', 'IRS', 'LEAP', 'SEC', 'GOOD', 'LEAP', 'CFO',
-         'WOW','ROI','BOTS'] # whitelist
+         'TA', 'LIFE', 'NOT', 'II', 'III', 'IRS', 'LEAP', 'SEC', 'GOOD', 'LEAP', 'CFO',
+         'WOW','ROI','BOTS', 'USA', 'LONG', 'LOAD', 'SHORT'] # whitelist
 
     stop_words = stopwords.words('english')
     whitelists = exclude + [x.upper() for x in stop_words if len(x) <= 4]

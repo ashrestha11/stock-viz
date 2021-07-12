@@ -21,3 +21,4 @@ This data collection is to test the limits of Google Sheets as a main source of 
 
 ### Dashboard 
 1. Data Studio
+prawcore.exceptions.ServerError: received 503 HTTP response

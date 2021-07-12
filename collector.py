@@ -45,6 +45,7 @@ def reddit_client():
 
 sid = SentimentIntensityAnalyzer()
 tz = pytz.timezone('America/Los_Angeles')
+reddit = reddit_client()
 
 def fetch_posts(subname:str):
     """
@@ -56,7 +57,6 @@ def fetch_posts(subname:str):
     Yields:
         [dict]: line of dict
     """
-    reddit = reddit_client()
     for submission in reddit.subreddit(subname).stream.submissions(skip_existing=True):
         try:
             infos = {}
@@ -81,7 +81,7 @@ def fetch_posts(subname:str):
             yield infos
         except requests.exceptions.HTTPError as error:
             logger.debug(error)
-            reddit = reddit_client()
+            time.sleep(10)
             continue
 
 def gsheet_auth(config_path: str, sheetname: str, worksheet:str):
@@ -116,7 +116,7 @@ def insert_gsheet(config_path:str,sheetname:str, worksheet:str,subreddits:str):
     while True:
         for post in fetch_posts(subname=subreddits):
 
-            if datetime.now(tz=tz) > gettime + timedelta(minutes=20):
+            if datetime.now(tz=tz) > gettime + timedelta(minutes=10):
 
                 logger.info("Reconnected at %s", datetime.now(tz=tz))
                 wrksht = gsheet_auth(config_path,sheetname=sheetname,worksheet=worksheet)
