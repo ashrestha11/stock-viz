@@ -44,3 +44,20 @@ def extract_symbols(text: str):
     # check the whitelist
     symbols = remove_whitelist(symbols)
     return list(set(symbols)) # removes duplicates
+
+def process_values(ws, post:dict):
+
+    len_symbols = len(post['symbols'])
+    symbols = post['symbols']
+
+    if len_symbols == 1:
+        post['symbols'] = symbols[0]
+        rows = [v for v in post.values()]
+        ws.append_row(rows)
+    elif len_symbols > 1:
+        for idx in range(0, len(symbols)):
+            post['symbols'] = symbols[idx]
+            row = [v for v in post.values()]
+            ws.append_row(row)
+    elif len_symbols == 0:
+        pass

@@ -1,28 +1,27 @@
 """
 Main scripts to collect data from subreddits and push it to db
 """
-
 import os
 import logging as logger
 import argparse
 from datetime import datetime
 from datetime import timedelta
+from re import sub
 import time
 import gspread
 import praw
 import nltk
 import pytz
 import requests
-from prawcore.exceptions import PrawcoreException
+# from prawcore.exceptions import PrawcoreException
 from google.oauth2 import service_account
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from praw.models import MoreComments
 from gspread.exceptions import APIError
 from dotenv import load_dotenv
-from extractor import extract_symbols
+from extractor import extract_symbols, process_values
 
 nltk.download('vader_lexicon')
-
 
 logger.basicConfig(format='%(levelname)s:%(message)s', level=logger.DEBUG)
 load_dotenv()
@@ -33,11 +32,17 @@ USER_AGENT = os.getenv('USER_AGENT')
 username = os.getenv('username')
 pw = os.getenv('pw')
 
-reddit = praw.Reddit(client_id=CLIENT,
+def reddit_client():
+    """
+    init reddit client
+    """
+    reddit = praw.Reddit(client_id=CLIENT,
                     client_secret=SEC,
                     user_agent=USER_AGENT,
                     username=username,
                     password=pw)
+    return reddit
+
 sid = SentimentIntensityAnalyzer()
 tz = pytz.timezone('America/Los_Angeles')
 
@@ -45,16 +50,14 @@ def fetch_posts(subname:str):
     """
     Checks for new posts and calls api to
     get the post from subreddit
-
     Args:
         subname (str): subredddit names
                         "all+reddit"
-
     Yields:
         [dict]: line of dict
     """
-
-    for submission in reddit.subreddit(subname).stream.submissions():
+    reddit = reddit_client()
+    for submission in reddit.subreddit(subname).stream.submissions(skip_existing=True):
         try:
             infos = {}
             infos['id'] = submission.id
@@ -66,33 +69,25 @@ def fetch_posts(subname:str):
             infos['subreddit'] = submission.subreddit.display_name
 
             # sentiment scores
-            scores = []
-            for comment in comments:
-                if isinstance(comment, MoreComments):
-                    continue
-                comment_sentiment = sid.polarity_scores(comment.body)
-                scores.append(comment_sentiment['compound'])
-
-            # # avg for the post
-            if len(comments) > 0:
-                avg_sentiment = sum(scores) / len(comments)
+            if submission.selftext is None:
+                avg_sentiment = sid.polarity_scores(submission.title)
             else:
-                avg_sentiment = sid.polarity_scores(submission.selftext)['compound']
-            infos['polarity'] = avg_sentiment
-            # joining symbols from title & body
+                avg_sentiment = sid.polarity_scores(submission.selftext)
+            
+            infos['sentiment'] = avg_sentiment['compound']
             infos['symbols'] = extract_symbols(submission.title) + \
                                extract_symbols(submission.selftext)
 
             yield infos
-        except PrawcoreException as error:
+        except requests.exceptions.HTTPError as error:
             logger.debug(error)
+            reddit = reddit_client()
             continue
 
-def gsheet_auth(config_path: str, sheetname: str):
+def gsheet_auth(config_path: str, sheetname: str, worksheet:str):
     """
     auth google api
     """
-
     scope = ['https://spreadsheets.google.com/feeds',
     'https://www.googleapis.com/auth/drive']
     creds = service_account.Credentials.from_service_account_file(config_path)
@@ -101,21 +96,21 @@ def gsheet_auth(config_path: str, sheetname: str):
     client = gspread.authorize(scoped_credentials)
 
     sheetname = client.open(sheetname)
-    wrksht = sheetname.sheet1
+    wrksht = sheetname.worksheet(worksheet)
 
     return wrksht
 
-def insert_gsheet(config_path:str,sheetname:str, subreddits:str):
+def insert_gsheet(config_path:str,sheetname:str, worksheet:str,subreddits:str):
     """
     Main function to collect & insert it to gsheet
     Args:
         config_path (str): gcloud json key
         sheetname (str): gsheet sheetname
+        worksheet (str): worksheet name in sheets
         subreddits (str): subreddits
     """
-
     # auth
-    wrksht = gsheet_auth(config_path, sheetname)
+    wrksht = gsheet_auth(config_path,sheetname=sheetname,worksheet=worksheet)
     gettime = datetime.now(tz=tz)
 
     while True:
@@ -124,38 +119,27 @@ def insert_gsheet(config_path:str,sheetname:str, subreddits:str):
             if datetime.now(tz=tz) > gettime + timedelta(minutes=20):
 
                 logger.info("Reconnected at %s", datetime.now(tz=tz))
-                wrksht = gsheet_auth(config_path, sheetname)
+                wrksht = gsheet_auth(config_path,sheetname=sheetname,worksheet=worksheet)
                 gettime = datetime.now(tz=tz)
             else:
                 logger.info("No Need for restart [%s]", datetime.now(tz=tz))
-
-            len_symbols = len(post['symbols'])
-            if len_symbols == 1:
-                post['symbols'] = post['symbols'][0]
-            elif len_symbols > 1:
-                post['symbols'] = str(post['symbols'])
-
-            values = [v for v in post.values() if len(post['symbols']) != 0] # skip if empty
-            logger.info(values)
-
             try:
-                wrksht.append_row(values)
+                process_values(wrksht,post)
                 time.sleep(1)
             # catches gspread specific execeptions
             except APIError as error:
                 logger.debug(error)
                 time.sleep(105)
-                wrksht.append_row(values)
+                process_values(wrksht,post)
                 continue
             # general exceptions
             except requests.exceptions.ConnectionError as error:
                 logger.debug(error)
                 time.sleep(.01)
 
-                wrksht = gsheet_auth(config_path, sheetname)
-                wrksht.append_row(values)
+                wrksht = gsheet_auth(config_path,sheetname=sheetname,worksheet=worksheet)
+                process_values(wrksht,post)
                 continue
-
 
 if __name__ == '__main__':
 
@@ -166,7 +150,9 @@ if __name__ == '__main__':
                         help='gsheet filename')
     parser.add_argument("-s", "--subreddits", type=str,
                         help="""subreddits (ex. 'python+all')""")
+    parser.add_argument("-w", "--worksheet", type=str,
+                        help="""worksheet name""")
     args = parser.parse_args()
 
     insert_gsheet(config_path=args.gsconfig, sheetname=args.sheetname,
-                  subreddits=args.subreddits)
+                  subreddits=args.subreddits, worksheet=args.worksheet)
