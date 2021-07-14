@@ -57,7 +57,7 @@ def fetch_posts(subname:str):
     Yields:
         [dict]: line of dict
     """
-    for submission in reddit.subreddit(subname).stream.submissions(skip_existing=True):
+    for submission in reddit.subreddit(subname).stream.submissions(skip_existing=False):
         try:
             infos = {}
             infos['id'] = submission.id
@@ -144,7 +144,7 @@ def insert_gsheet(config_path:str,sheetname:str, worksheet:str,subreddits:str):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-g","--gsconfig", type=str,
+    parser.add_argument("-config","--gsconfig", type=str,
                         help="config path for gsheeta api")
     parser.add_argument("-n", "--sheetname", type=str,
                         help='gsheet filename')
