@@ -1,24 +1,26 @@
 # stock-viz
 
-This data collection is to test the limits of Google Sheets as a main source of database. The scripts runs 24/7 and collects all the symbols mentioned in subreddit posts.
+Analytics tool to track and analysis "Meme" stock mentioned in popular subreddit posts. Many retail traders are using Reddit groups to find stocks that could return high rate of return in short amount of time. Even the financial news are using subreddit, such as Wallstreetbets, to reference most mentioned "meme" stocks.
+
+Some examples are:
+- https://finance.yahoo.com/news/beyond-gamestop-reddit-wallstreetbets-now-142205449.html
+- https://markets.businessinsider.com/news/stocks/reddit-meme-stocks-wall-street-bets-top-ten-talking-about-2021-7
+- https://investorplace.com/2021/07/7-reddit-penny-stocks-about-to-explode/
 
 ### Architecture
 
-![arch](./img/arch.png)
+The core architecture idea:
+  - Reddit API Wrapper --> extractor scripts --> load the data to a data source (google sheets)
+  - Simple ETL ideas that checks for new posts 24 hours
+ 
+### How to run:
+1. Get Google Sheets and Reddit API credientials
+2. copy Reddit API creds to .env file in project's root dir
+3. Move Google Sheets API to project's root dir
 
-
-### data collection:
-
-1. collect the raw data from social media (posts, date, title, comments, upvote)
-2. clean the title and extract symbols on certain conditions 
-3. get the sentiment score
-
-## Deployment
-1. Google cloud functions (to-do)
-
-### Data Cleaning
-1. Raw collection -> Timestamp, symbols, count
-
-### Dashboard 
-1. Data Studio
-prawcore.exceptions.ServerError: received 503 HTTP response
+change flags in the runner.sh:  
+```./viz/bin/python3 ./app/collector.py \
+      -config 'your_google_creds.json' \
+      -n 'your_gsheet_file' \
+      -s 'wallstreetbets+options+pennystocks' \ # names of subreddit to track
+      -w 'worksheet_name' ```
