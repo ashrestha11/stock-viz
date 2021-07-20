@@ -2,6 +2,8 @@
 
 Analytics tool to track and analysis "Meme" stock mentioned in popular subreddit posts. Many retail traders are using Reddit groups to find stocks that could return high rate of return in short amount of time. Even the financial news are using subreddit, such as Wallstreetbets, to reference most mentioned "meme" stocks.
 
+[Dashboard Demo 👀📈](https://datastudio.google.com/reporting/d6c5a543-0735-45e4-a75c-9869c8736d0a)
+
 Some examples are:
 - https://finance.yahoo.com/news/beyond-gamestop-reddit-wallstreetbets-now-142205449.html
 - https://markets.businessinsider.com/news/stocks/reddit-meme-stocks-wall-street-bets-top-ten-talking-about-2021-7
