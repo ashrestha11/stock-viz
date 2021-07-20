@@ -25,4 +25,7 @@ change flags in the runner.sh:
       -config 'your_google_creds.json' \
       -n 'your_gsheet_file' \
       -s 'wallstreetbets+options+pennystocks' \ # names of subreddit to track
-      -w 'worksheet_name' ```
+      -w 'worksheet_name' 
+ ```
+then:  
+``` ./runner.sh ```
