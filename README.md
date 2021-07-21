@@ -1,6 +1,6 @@
 # stock-viz
 
-Analytics tool to track and analysis "Meme" stock mentioned in popular subreddit posts. Many retail traders are using Reddit groups to find stocks that could return high rate of return in short amount of time. Even the financial news are using subreddit, such as Wallstreetbets, to reference most mentioned "meme" stocks.
+Analytics tool to analysis trend and sentiment scores of "Meme" stock mentioned in popular subreddit posts to find insights next potiental big price actions. Many retail traders are using Reddit groups to find stocks that could return high rate of return in short amount of time. Even the financial news are using subreddit, such as Wallstreetbets, to reference most mentioned "meme" stocks.
 
 [Dashboard Demo 👀📈](https://datastudio.google.com/reporting/d6c5a543-0735-45e4-a75c-9869c8736d0a)
 
