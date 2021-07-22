@@ -3,6 +3,7 @@ Clean texts, extracts symbols and
 checks for non-symbols to remove
 """
 import re
+import time
 from utils.whitelist import remove_whitelist
 
 def remove_emoji(string):
@@ -59,5 +60,6 @@ def process_values(ws, post:dict):
             post['symbols'] = symbols[idx]
             row = [v for v in post.values()]
             ws.append_row(row)
+            time.sleep(1)
     elif len_symbols == 0:
         pass
