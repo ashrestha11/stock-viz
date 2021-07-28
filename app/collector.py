@@ -13,7 +13,6 @@ import praw
 import nltk
 import pytz
 import requests
-# from prawcore.exceptions import PrawcoreException
 from google.oauth2 import service_account
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from praw.models import MoreComments
@@ -22,6 +21,7 @@ from dotenv import load_dotenv
 from extractor import extract_symbols, process_values
 
 nltk.download('vader_lexicon')
+nltk.download('stopwords')
 
 logger.basicConfig(format='%(levelname)s:%(message)s', level=logger.DEBUG)
 load_dotenv()
