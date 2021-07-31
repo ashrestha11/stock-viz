@@ -20,12 +20,7 @@ The core architecture idea:
 2. copy Reddit API creds to .env file in project's root dir
 3. Move Google Sheets API to project's root dir
 
-change flags in the runner.sh:  
-```./viz/bin/python3 ./app/collector.py \
-      -config 'your_google_creds.json' \
-      -n 'your_gsheet_file' \
-      -s 'wallstreetbets+options+pennystocks' \ # names of subreddit to track
-      -w 'worksheet_name' 
- ```
-then:  
+- change the export variables in ```runner.sh ``` to your variables 
+- give permission to the dir
+- then:  
 ``` ./runner.sh ```
