@@ -46,8 +46,17 @@ def extract_symbols(text: str):
     symbols = remove_whitelist(symbols)
     return list(set(symbols)) # removes duplicates
 
-def process_values(ws, post:dict):
+def process_values(ws: object, post:dict):
+    """
+    process values to load it to gsheet
+    if one symbol then just dump it
+    else dump in a row format
 
+    Args:
+        ws (object): google sheets client
+        post (dict): extracted post from reddit
+    """
+   
     len_symbols = len(post['symbols'])
     symbols = post['symbols']
 
@@ -55,11 +64,13 @@ def process_values(ws, post:dict):
         post['symbols'] = symbols[0]
         rows = [v for v in post.values()]
         ws.append_row(rows)
+
     elif len_symbols > 1:
         for idx in range(0, len(symbols)):
             post['symbols'] = symbols[idx]
             row = [v for v in post.values()]
             ws.append_row(row)
             time.sleep(1)
+
     elif len_symbols == 0:
         pass

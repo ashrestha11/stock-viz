@@ -67,14 +67,13 @@ def fetch_posts(subname:str):
             comments = submission.comments.list()
             infos['comments'] = len(comments)
             infos['subreddit'] = submission.subreddit.display_name
+            infos['selftext'] = submission.selftext
 
             # sentiment scores
-            if submission.selftext is None:
-                avg_sentiment = sid.polarity_scores(submission.title)
-            else:
-                avg_sentiment = sid.polarity_scores(submission.selftext)
-            
-            infos['sentiment'] = avg_sentiment['compound']
+            infos['sentiment_title'] = sid.polarity_scores(submission.selftext)['compound']
+            infos['sentiment_body'] = sid.polarity_scores(submission.selftext)['compound'] \
+                            if submission.selftext is not None else 0
+
             infos['symbols'] = extract_symbols(submission.title) + \
                                extract_symbols(submission.selftext)
 
