@@ -24,3 +24,7 @@ The core architecture idea:
 - give permission to the dir
 - then:  
 ``` ./runner.sh ```
+### In process:
+- Using Deep learning model to extract symbols instead of using an algothrim
+  - Better extracting probablity and no need to use whitelists
+- Add a config file to dynamically change subreddits and whitelists
